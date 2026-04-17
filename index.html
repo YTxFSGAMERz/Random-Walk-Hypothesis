@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Random Walk Hypothesis — Bitcoin Statistical Research</title>
+  <meta name="description" content="Rigorous statistical testing of the Random Walk Hypothesis on Bitcoin (BTC-USD) using ADF, Runs Test, Variance Ratio, and GARCH(1,1) modelling." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0d1117;
+      --surface:  #161b22;
+      --border:   #30363d;
+      --text:     #e6edf3;
+      --muted:    #8b949e;
+      --blue:     #58a6ff;
+      --green:    #3fb950;
+      --red:      #f85149;
+      --orange:   #f0883e;
+      --purple:   #d2a8ff;
+      --yellow:   #e3b341;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2rem; height: 60px;
+      background: rgba(13,17,23,.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo { font-weight: 700; font-size: 1rem; color: var(--blue); letter-spacing: -.3px; }
+    .nav-links { display: flex; gap: 1.5rem; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: .875rem; transition: color .2s; }
+    .nav-links a:hover { color: var(--text); }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative; overflow: hidden;
+      padding: 6rem 2rem 4rem;
+      text-align: center;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(88,166,255,.12), transparent);
+      pointer-events: none;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: .4rem;
+      background: rgba(88,166,255,.1); border: 1px solid rgba(88,166,255,.25);
+      border-radius: 2rem; padding: .3rem .9rem;
+      font-size: .75rem; color: var(--blue); font-weight: 500;
+      margin-bottom: 1.5rem; letter-spacing: .5px;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 800; line-height: 1.1; letter-spacing: -1.5px;
+      margin-bottom: 1.2rem;
+    }
+    .hero h1 span { color: var(--blue); }
+    .hero p {
+      max-width: 640px; margin: 0 auto 2rem;
+      font-size: 1.1rem; color: var(--muted); font-weight: 400;
+    }
+    .hero-btns { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: .45rem;
+      padding: .65rem 1.4rem; border-radius: .5rem;
+      font-size: .875rem; font-weight: 600; text-decoration: none;
+      transition: all .2s; cursor: pointer;
+    }
+    .btn-primary { background: var(--blue); color: #0d1117; }
+    .btn-primary:hover { background: #79c0ff; transform: translateY(-1px); }
+    .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-outline:hover { background: var(--surface); border-color: var(--blue); }
+
+    /* ── VERDICT BANNER ── */
+    .verdict {
+      max-width: 900px; margin: 0 auto 4rem;
+      background: rgba(248,81,73,.07); border: 1px solid rgba(248,81,73,.3);
+      border-radius: 1rem; padding: 1.5rem 2rem;
+      display: flex; align-items: center; gap: 1.2rem;
+    }
+    .verdict-icon { font-size: 2.5rem; flex-shrink: 0; }
+    .verdict-text h3 { color: var(--red); font-size: 1.1rem; font-weight: 700; margin-bottom: .2rem; }
+    .verdict-text p { color: var(--muted); font-size: .9rem; }
+
+    /* ── LIVE PRICE ── */
+    .live-section {
+      max-width: 900px; margin: 0 auto 4rem; padding: 0 2rem;
+    }
+    .live-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 1rem; padding: 1.5rem 2rem;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;
+    }
+    .live-label { font-size: .75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: .25rem; }
+    .live-price { font-size: 2rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--blue); }
+    .live-change { font-size: 1rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+    .live-change.pos { color: var(--green); }
+    .live-change.neg { color: var(--red); }
+    .live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; margin-right: .4rem; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+
+    /* ── SECTION ── */
+    section { max-width: 900px; margin: 0 auto; padding: 0 2rem 5rem; }
+    .section-header { margin-bottom: 2rem; }
+    .section-header h2 { font-size: 1.5rem; font-weight: 700; letter-spacing: -.5px; margin-bottom: .4rem; }
+    .section-header p { color: var(--muted); font-size: .9rem; }
+    .section-label {
+      display: inline-block; font-size: .7rem; font-weight: 600; letter-spacing: 1px;
+      text-transform: uppercase; color: var(--blue); margin-bottom: .5rem;
+    }
+
+    /* ── SCORE CARDS ── */
+    .score-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+    .score-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: .75rem; padding: 1.25rem 1.5rem;
+      transition: border-color .2s, transform .2s;
+    }
+    .score-card:hover { border-color: var(--blue); transform: translateY(-2px); }
+    .score-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: .75rem; }
+    .score-card h3 { font-size: .875rem; font-weight: 600; }
+    .badge { display: inline-flex; align-items: center; gap: .3rem; font-size: .75rem; font-weight: 600; padding: .2rem .55rem; border-radius: .3rem; }
+    .badge-pass { background: rgba(63,185,80,.12); color: var(--green); }
+    .badge-fail { background: rgba(248,81,73,.12); color: var(--red); }
+    .score-stat { font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; color: var(--blue); font-weight: 500; }
+    .score-desc { font-size: .8rem; color: var(--muted); margin-top: .3rem; }
+
+    /* ── TABLE ── */
+    .table-wrap { overflow-x: auto; border-radius: .75rem; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+    thead { background: rgba(22,27,34,.9); }
+    th { padding: .9rem 1.2rem; text-align: left; font-size: .75rem; font-weight: 600; color: var(--muted); letter-spacing: .5px; text-transform: uppercase; }
+    td { padding: .85rem 1.2rem; border-top: 1px solid var(--border); }
+    tr:hover td { background: rgba(88,166,255,.03); }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    /* ── CHART SECTION ── */
+    .charts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
+    .chart-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: .75rem; overflow: hidden;
+      transition: border-color .2s, transform .2s;
+    }
+    .chart-card:hover { border-color: var(--blue); transform: translateY(-3px); }
+    .chart-card img { width: 100%; display: block; object-fit: cover; }
+    .chart-info { padding: .9rem 1.1rem; }
+    .chart-info h4 { font-size: .875rem; font-weight: 600; margin-bottom: .2rem; }
+    .chart-info p { font-size: .78rem; color: var(--muted); }
+
+    /* ── TIMELINE ── */
+    .timeline { position: relative; padding-left: 1.5rem; }
+    .timeline::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--border); border-radius: 2px; }
+    .tl-item { position: relative; padding: 0 0 2rem 1.5rem; }
+    .tl-item::before { content: ''; position: absolute; left: -5px; top: .35rem; width: 12px; height: 12px; border-radius: 50%; background: var(--blue); border: 2px solid var(--bg); }
+    .tl-item h4 { font-size: .9rem; font-weight: 600; margin-bottom: .25rem; }
+    .tl-item p { font-size: .82rem; color: var(--muted); }
+
+    /* ── TOPICS ── */
+    .topics { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .topic {
+      background: rgba(88,166,255,.08); border: 1px solid rgba(88,166,255,.2);
+      color: var(--blue); padding: .25rem .75rem; border-radius: 2rem;
+      font-size: .78rem; font-weight: 500;
+    }
+
+    /* ── CODE BLOCK ── */
+    pre {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: .75rem; padding: 1.25rem 1.5rem;
+      overflow-x: auto; font-family: 'JetBrains Mono', monospace;
+      font-size: .82rem; line-height: 1.7; color: var(--text);
+    }
+    code { color: var(--blue); }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem; text-align: center;
+      color: var(--muted); font-size: .82rem;
+    }
+    footer a { color: var(--blue); text-decoration: none; }
+
+    /* ── GARCH BOX ── */
+    .param-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: .75rem; margin-top: 1rem; }
+    .param-card {
+      background: rgba(210,168,255,.05); border: 1px solid rgba(210,168,255,.15);
+      border-radius: .6rem; padding: 1rem;
+    }
+    .param-name { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: .3rem; }
+    .param-val { font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; font-weight: 600; color: var(--purple); }
+    .param-sig { font-size: .72rem; color: var(--green); }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <span class="nav-logo">📊 RWH · BTC</span>
+  <div class="nav-links">
+    <a href="#results">Results</a>
+    <a href="#charts">Charts</a>
+    <a href="#garch">GARCH</a>
+    <a href="#methodology">Method</a>
+    <a href="https://github.com/YTxFSGAMERz/Random-Walk-Hypothesis" target="_blank">GitHub</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">🔬 Quantitative Finance Research</div>
+  <h1>Testing the <span>Random Walk</span><br/>Hypothesis on Bitcoin</h1>
+  <p>A rigorous statistical analysis across 13 years of BTC-USD daily data using ADF, Autocorrelation, Runs Test, Variance Ratio, and GARCH(1,1) modelling.</p>
+  <div class="hero-btns">
+    <a href="Final_Report.md" class="btn btn-primary">📄 Read Full Report</a>
+    <a href="https://github.com/YTxFSGAMERz/Random-Walk-Hypothesis" class="btn btn-outline" target="_blank">⭐ View on GitHub</a>
+  </div>
+</div>
+
+<!-- VERDICT BANNER -->
+<div style="max-width:900px;margin:0 auto 3rem;padding:0 2rem">
+  <div class="verdict">
+    <div class="verdict-icon">❌</div>
+    <div class="verdict-text">
+      <h3>RWH REJECTED — 2 of 5 tests support the Random Walk Hypothesis</h3>
+      <p>Bitcoin exhibits significant <strong>momentum</strong>, <strong>serial autocorrelation</strong> at 6–30 day horizons, and <strong>long-run variance ratio deviations</strong> — all inconsistent with a pure random walk. Bitcoin is <strong>not weak-form efficient</strong>.</p>
+    </div>
+  </div>
+</div>
+
+<!-- LIVE PRICE -->
+<div class="live-section">
+  <div class="live-card">
+    <div>
+      <div class="live-label"><span class="live-dot"></span>Live BTC Price</div>
+      <div class="live-price" id="btcPrice">Loading…</div>
+    </div>
+    <div>
+      <div class="live-label">24h Change</div>
+      <div class="live-change" id="btcChange">—</div>
+    </div>
+    <div>
+      <div class="live-label">Market Cap</div>
+      <div class="live-change" id="btcMarketCap" style="color:var(--muted)">—</div>
+    </div>
+    <div>
+      <div class="live-label">24h Volume</div>
+      <div class="live-change" id="btcVolume" style="color:var(--muted)">—</div>
+    </div>
+    <div style="font-size:.75rem;color:var(--muted)">via CoinGecko</div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<section id="results">
+  <div class="section-header">
+    <span class="section-label">Statistical Tests</span>
+    <h2>Test Results — BTC-USD (2013–2026)</h2>
+    <p>4,735 daily log return observations · April 2013 → April 2026</p>
+  </div>
+  <div class="score-grid">
+    <div class="score-card">
+      <div class="score-card-top">
+        <h3>ADF Test — Prices</h3>
+        <span class="badge badge-pass">✔ Supports</span>
+      </div>
+      <div class="score-stat">p = 0.7450</div>
+      <div class="score-desc">Unit root present. Prices are non-stationary — consistent with a random walk structure.</div>
+    </div>
+    <div class="score-card">
+      <div class="score-card-top">
+        <h3>ADF Test — Returns</h3>
+        <span class="badge badge-pass">✔ Supports</span>
+      </div>
+      <div class="score-stat">p = 0.0000</div>
+      <div class="score-desc">Log returns are strongly stationary. No unit root in the return series.</div>
+    </div>
+    <div class="score-card">
+      <div class="score-card-top">
+        <h3>Ljung-Box ACF</h3>
+        <span class="badge badge-fail">✘ Rejects</span>
+      </div>
+      <div class="score-stat">Sig. lags 6–30</div>
+      <div class="score-desc">Significant autocorrelation beyond 1 trading week. Returns are serially dependent.</div>
+    </div>
+    <div class="score-card">
+      <div class="score-card-top">
+        <h3>Runs Test</h3>
+        <span class="badge badge-fail">✘ Rejects</span>
+      </div>
+      <div class="score-stat">Z=3.04 · p=0.0024</div>
+      <div class="score-desc">Positive Z → fewer runs than expected → momentum clustering of same-sign returns.</div>
+    </div>
+    <div class="score-card">
+      <div class="score-card-top">
+        <h3>Variance Ratio k=20</h3>
+        <span class="badge badge-fail">✘ Rejects</span>
+      </div>
+      <div class="score-stat">VR = 1.2273</div>
+      <div class="score-desc">VR > 1 at 20-day horizon. Positive autocorrelation — variance grows faster than linear.</div>
+    </div>
+  </div>
+
+  <br/>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Horizon k</th>
+          <th>VR(k)</th>
+          <th>z-statistic</th>
+          <th>Significant?</th>
+          <th>Interpretation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="mono">2</td><td class="mono">0.9902</td><td class="mono">-0.677</td><td><span class="badge badge-pass">No ✔</span></td><td style="color:var(--muted)">Near-random at 2-day</td></tr>
+        <tr><td class="mono">5</td><td class="mono">0.9990</td><td class="mono">-0.030</td><td><span class="badge badge-pass">No ✔</span></td><td style="color:var(--muted)">Near-random at 1-week</td></tr>
+        <tr><td class="mono">10</td><td class="mono">1.0747</td><td class="mono">1.523</td><td><span class="badge badge-pass">No ✔</span></td><td style="color:var(--muted)">Borderline at 2-week</td></tr>
+        <tr><td class="mono">20</td><td class="mono" style="color:var(--red)">1.2273</td><td class="mono" style="color:var(--red)">3.147</td><td><span class="badge badge-fail">Yes ✘</span></td><td style="color:var(--muted)">Momentum at 1-month</td></tr>
+        <tr><td class="mono">30</td><td class="mono" style="color:var(--red)">1.3210</td><td class="mono" style="color:var(--red)">3.582</td><td><span class="badge badge-fail">Yes ✘</span></td><td style="color:var(--muted)">Strong momentum at 6-week</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- CHARTS -->
+<section id="charts">
+  <div class="section-header">
+    <span class="section-label">Visualisations</span>
+    <h2>Diagnostic Charts</h2>
+    <p>Publication-quality plots generated from the full BTC-USD dataset.</p>
+  </div>
+  <div class="charts-grid">
+    <div class="chart-card">
+      <img src="btc_eda_plots.png" alt="EDA Plots" loading="lazy" />
+      <div class="chart-info">
+        <h4>Exploratory Data Analysis</h4>
+        <p>Price series, log returns, return histogram, ACF, and 30-day rolling volatility.</p>
+      </div>
+    </div>
+    <div class="chart-card">
+      <img src="btc_variance_ratio.png" alt="Variance Ratio" loading="lazy" />
+      <div class="chart-info">
+        <h4>Variance Ratio Profile</h4>
+        <p>VR(k) from k=2 to k=50. Monotonically rising curve confirms long-run momentum.</p>
+      </div>
+    </div>
+    <div class="chart-card">
+      <img src="btc_garch_plots.png" alt="GARCH Plots" loading="lazy" />
+      <div class="chart-info">
+        <h4>GARCH + Rolling Window Analysis</h4>
+        <p>Conditional volatility, standardised residuals, rolling ADF and Runs statistics.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- GARCH -->
+<section id="garch">
+  <div class="section-header">
+    <span class="section-label">Extension</span>
+    <h2>GARCH(1,1) Volatility Model</h2>
+    <p>Fitted on 4,735 daily BTC log return observations (×100 for numerical stability).</p>
+  </div>
+  <div class="param-grid">
+    <div class="param-card">
+      <div class="param-name">μ (mu)</div>
+      <div class="param-val">0.1357</div>
+      <div class="param-sig">p = 0.0013 ★★</div>
+    </div>
+    <div class="param-card">
+      <div class="param-name">ω (omega)</div>
+      <div class="param-val">0.5957</div>
+      <div class="param-sig">p = 0.0003 ★★★</div>
+    </div>
+    <div class="param-card">
+      <div class="param-name">α alpha[1]</div>
+      <div class="param-val">0.1484</div>
+      <div class="param-sig">p &lt; 0.0001 ★★★</div>
+    </div>
+    <div class="param-card">
+      <div class="param-name">β beta[1]</div>
+      <div class="param-val">0.8207</div>
+      <div class="param-sig">p &lt; 0.0001 ★★★</div>
+    </div>
+    <div class="param-card" style="background:rgba(248,81,73,.05);border-color:rgba(248,81,73,.2)">
+      <div class="param-name">Persistence α+β</div>
+      <div class="param-val" style="color:var(--red)">0.9691</div>
+      <div class="param-sig" style="color:var(--orange)">Very high — shocks decay slowly</div>
+    </div>
+    <div class="param-card">
+      <div class="param-name">Long-run Annual Vol</div>
+      <div class="param-val">83.84%</div>
+      <div class="param-sig" style="color:var(--muted)">Annualised conditional vol</div>
+    </div>
+  </div>
+</section>
+
+<!-- METHODOLOGY -->
+<section id="methodology">
+  <div class="section-header">
+    <span class="section-label">Methodology</span>
+    <h2>Research Pipeline</h2>
+    <p>Step-by-step statistical workflow applied to the BTC-USD time series.</p>
+  </div>
+  <div class="timeline">
+    <div class="tl-item">
+      <h4>1. Data Loading & Preprocessing</h4>
+      <p>btc-usd-max.csv (CoinGecko) · 4,736 rows · 2013-04-28 → 2026-04-17 · datetime index, sorted, NaN-dropped.</p>
+    </div>
+    <div class="tl-item">
+      <h4>2. Log Return Calculation</h4>
+      <p>r_t = ln(P_t / P_{t-1}) · 4,735 observations · Mean=0.13%/day · Kurtosis=9.38 (extreme fat tails).</p>
+    </div>
+    <div class="tl-item">
+      <h4>3. Augmented Dickey-Fuller Test</h4>
+      <p>Prices: p=0.7450 (non-stationary ✔) · Returns: p&lt;0.0001 (stationary ✔) · Both support RWH structure.</p>
+    </div>
+    <div class="tl-item">
+      <h4>4. Ljung-Box Autocorrelation Test</h4>
+      <p>Significant serial correlation from lag 6 onward (Q=16.03, p=0.0136). Medium-horizon dependence detected.</p>
+    </div>
+    <div class="tl-item">
+      <h4>5. Wald-Wolfowitz Runs Test</h4>
+      <p>Z=3.04, p=0.0024 · Positive Z → fewer runs than expected → momentum clustering of same-sign returns.</p>
+    </div>
+    <div class="tl-item">
+      <h4>6. Variance Ratio Test (Lo-MacKinlay 1988)</h4>
+      <p>VR rises monotonically from 0.99 (k=2) to 1.44 (k=50). Statistically significant at k=20,30.</p>
+    </div>
+    <div class="tl-item">
+      <h4>7. GARCH(1,1) + Rolling Window Extensions</h4>
+      <p>Persistence α+β=0.969. Rolling ADF: 100% of 365-day windows stationary. Rolling Runs: 14.8% non-random.</p>
+    </div>
+  </div>
+
+  <br/>
+  <pre><code>pip install pandas numpy matplotlib statsmodels arch
+python rw_btc_test.py     # Core tests
+python rw_extensions.py   # GARCH + rolling analysis</code></pre>
+
+  <br/>
+  <div class="topics">
+    <span class="topic">random-walk-hypothesis</span>
+    <span class="topic">bitcoin</span>
+    <span class="topic">python</span>
+    <span class="topic">statsmodels</span>
+    <span class="topic">garch</span>
+    <span class="topic">time-series-analysis</span>
+    <span class="topic">market-efficiency</span>
+    <span class="topic">quantitative-finance</span>
+    <span class="topic">hypothesis-testing</span>
+    <span class="topic">financial-analysis</span>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>
+    Built with 🐍 Python · statsmodels · arch · matplotlib &nbsp;|&nbsp;
+    <a href="https://github.com/YTxFSGAMERz/Random-Walk-Hypothesis" target="_blank">GitHub Repository</a> &nbsp;|&nbsp;
+    Data: <a href="https://www.coingecko.com" target="_blank">CoinGecko</a>
+  </p>
+  <p style="margin-top:.5rem">Data updated daily via GitHub Actions 🤖</p>
+</footer>
+
+<script>
+  // Fetch live BTC price from CoinGecko public API
+  async function loadPrice() {
+    try {
+      const r = await fetch(
+        'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true&include_market_cap=true&include_24hr_vol=true'
+      );
+      const d = await r.json();
+      const btc = d.bitcoin;
+      document.getElementById('btcPrice').textContent = '$' + btc.usd.toLocaleString();
+      const ch = btc.usd_24h_change.toFixed(2);
+      const el = document.getElementById('btcChange');
+      el.textContent = (ch > 0 ? '+' : '') + ch + '%';
+      el.className = 'live-change ' + (ch >= 0 ? 'pos' : 'neg');
+      document.getElementById('btcMarketCap').textContent =
+        '$' + (btc.usd_market_cap / 1e9).toFixed(1) + 'B';
+      document.getElementById('btcVolume').textContent =
+        '$' + (btc.usd_24h_vol / 1e9).toFixed(1) + 'B';
+    } catch {
+      document.getElementById('btcPrice').textContent = 'Unavailable';
+    }
+  }
+  loadPrice();
+  setInterval(loadPrice, 60000); // refresh every minute
+</script>
+</body>
+</html>
