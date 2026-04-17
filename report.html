@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Research Report — Random Walk Hypothesis on Bitcoin</title>
+  <meta name="description" content="Full academic report: Testing the Random Walk Hypothesis on Bitcoin (BTC-USD) using ADF, Autocorrelation, Runs Test, Variance Ratio, and GARCH(1,1)." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+  <!-- KaTeX for math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]})"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d1117; --surface: #161b22; --surface2: #1c2128;
+      --border: #30363d; --text: #e6edf3; --muted: #8b949e;
+      --blue: #58a6ff; --green: #3fb950; --red: #f85149;
+      --orange: #f0883e; --purple: #d2a8ff; --yellow: #e3b341;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg); color: var(--text);
+      line-height: 1.7; overflow-x: hidden;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2rem; height: 56px;
+      background: rgba(13,17,23,.9); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-left { display: flex; align-items: center; gap: 1rem; }
+    .nav-home { color: var(--muted); text-decoration: none; font-size: .875rem; transition: color .2s; }
+    .nav-home:hover { color: var(--blue); }
+    .nav-sep { color: var(--border); }
+    .nav-title { font-size: .875rem; font-weight: 600; color: var(--text); }
+    .nav-badge {
+      background: rgba(248,81,73,.12); border: 1px solid rgba(248,81,73,.3);
+      color: var(--red); font-size: .7rem; font-weight: 700; padding: .15rem .5rem;
+      border-radius: .25rem; letter-spacing: .3px;
+    }
+
+    /* ── LAYOUT ── */
+    .page-wrap {
+      max-width: 1100px; margin: 0 auto; padding: 3rem 2rem;
+      display: grid; grid-template-columns: 220px 1fr; gap: 3rem;
+      align-items: start;
+    }
+
+    /* ── SIDEBAR TOC ── */
+    .toc {
+      position: sticky; top: 80px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: .75rem; padding: 1.25rem;
+    }
+    .toc-title { font-size: .7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .8px; color: var(--muted); margin-bottom: .9rem; }
+    .toc a {
+      display: block; color: var(--muted); text-decoration: none;
+      font-size: .8rem; padding: .3rem .5rem; border-radius: .3rem;
+      transition: all .15s; border-left: 2px solid transparent;
+    }
+    .toc a:hover { color: var(--text); background: var(--surface2); border-left-color: var(--blue); }
+    .toc a.sub { padding-left: 1rem; font-size: .75rem; }
+
+    /* ── MAIN CONTENT ── */
+    main { min-width: 0; }
+
+    /* Paper header */
+    .paper-header {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 1rem; padding: 2rem 2.5rem; margin-bottom: 2.5rem;
+    }
+    .paper-header h1 {
+      font-size: clamp(1.4rem, 3vw, 2rem); font-weight: 800;
+      letter-spacing: -.5px; line-height: 1.2; margin-bottom: .5rem;
+    }
+    .paper-header h1 span { color: var(--blue); }
+    .paper-sub { font-size: 1rem; color: var(--muted); font-style: italic; margin-bottom: 1.5rem; }
+    .meta-grid { display: flex; flex-wrap: wrap; gap: .9rem; }
+    .meta-item { font-size: .8rem; color: var(--muted); }
+    .meta-item strong { color: var(--text); }
+
+    /* Verdict card */
+    .verdict-card {
+      display: flex; align-items: flex-start; gap: 1.2rem;
+      background: rgba(248,81,73,.07); border: 1px solid rgba(248,81,73,.3);
+      border-radius: .75rem; padding: 1.25rem 1.5rem; margin-bottom: 2.5rem;
+    }
+    .verdict-icon { font-size: 2rem; flex-shrink: 0; }
+    .verdict-card h3 { color: var(--red); font-size: 1rem; margin-bottom: .3rem; }
+    .verdict-card p { font-size: .875rem; color: var(--muted); }
+
+    /* Section structure */
+    .section { margin-bottom: 3rem; }
+    .section h2 {
+      font-size: 1.3rem; font-weight: 700; letter-spacing: -.4px;
+      padding-bottom: .6rem; border-bottom: 1px solid var(--border);
+      margin-bottom: 1.25rem; color: var(--text);
+      display: flex; align-items: center; gap: .6rem;
+    }
+    .section h2 .num {
+      background: var(--blue); color: #0d1117;
+      font-size: .75rem; font-weight: 800; padding: .15rem .5rem;
+      border-radius: .3rem; letter-spacing: .3px;
+    }
+    .section h3 {
+      font-size: 1rem; font-weight: 600; color: var(--blue);
+      margin: 1.5rem 0 .6rem;
+    }
+    .section p { margin-bottom: .9rem; color: #c9d1d9; font-size: .95rem; }
+    .section ul, .section ol {
+      margin: 0 0 .9rem 1.5rem; color: #c9d1d9; font-size: .95rem;
+    }
+    .section li { margin-bottom: .3rem; }
+    .section strong { color: var(--text); }
+
+    /* Abstract box */
+    .abstract {
+      background: var(--surface2); border-left: 3px solid var(--blue);
+      border-radius: 0 .5rem .5rem 0; padding: 1.1rem 1.5rem;
+      margin-bottom: 2.5rem; font-size: .925rem; color: #c9d1d9;
+      font-style: italic;
+    }
+    .abstract strong { color: var(--text); font-style: normal; }
+
+    /* Tables */
+    .table-wrap { overflow-x: auto; border-radius: .6rem; border: 1px solid var(--border); margin: 1rem 0; }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    thead { background: var(--surface2); }
+    th { padding: .7rem 1rem; text-align: left; font-size: .75rem;
+      font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    td { padding: .7rem 1rem; border-top: 1px solid var(--border); color: #c9d1d9; }
+    tr:hover td { background: rgba(88,166,255,.03); }
+    .mono { font-family: 'JetBrains Mono', monospace; font-size: .82rem; }
+    .badge { display: inline-flex; gap: .25rem; align-items: center;
+      font-size: .73rem; font-weight: 600; padding: .15rem .5rem; border-radius: .25rem; }
+    .badge-pass { background: rgba(63,185,80,.12); color: var(--green); }
+    .badge-fail { background: rgba(248,81,73,.12); color: var(--red); }
+
+    /* Math display */
+    .math-block {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: .5rem; padding: 1rem 1.5rem; margin: .75rem 0;
+      overflow-x: auto; text-align: center;
+    }
+
+    /* Test cards */
+    .test-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: .75rem; padding: 1.25rem 1.5rem; margin: 1rem 0;
+    }
+    .test-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: .75rem; }
+    .test-card-header h4 { font-size: .95rem; font-weight: 700; }
+    .h0-box {
+      background: rgba(210,168,255,.07); border: 1px solid rgba(210,168,255,.2);
+      border-left: 3px solid var(--purple);
+      border-radius: .4rem; padding: .6rem 1rem; margin-bottom: .75rem;
+      font-size: .83rem; color: var(--purple);
+    }
+    .verdict-inline {
+      margin-top: .75rem; padding: .5rem .9rem; border-radius: .4rem;
+      font-size: .83rem; font-weight: 600;
+    }
+    .verdict-pass { background: rgba(63,185,80,.08); border: 1px solid rgba(63,185,80,.2); color: var(--green); }
+    .verdict-fail { background: rgba(248,81,73,.08); border: 1px solid rgba(248,81,73,.2); color: var(--red); }
+
+    /* GARCH params */
+    .param-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: .75rem; margin: 1rem 0; }
+    .param-cell {
+      background: rgba(210,168,255,.05); border: 1px solid rgba(210,168,255,.15);
+      border-radius: .5rem; padding: .9rem 1rem;
+    }
+    .param-name { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: .25rem; }
+    .param-val { font-family: 'JetBrains Mono',monospace; font-size: 1rem; font-weight: 600; color: var(--purple); }
+
+    /* Score summary */
+    .score-summary {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: .75rem; overflow: hidden; margin: 1rem 0;
+    }
+    .score-row {
+      display: grid; grid-template-columns: 1fr auto;
+      align-items: center; padding: .7rem 1.25rem;
+      border-bottom: 1px solid var(--border); font-size: .875rem;
+    }
+    .score-row:last-child { border-bottom: none; }
+    .score-row.final { background: rgba(13,17,23,.5); font-weight: 700; }
+
+    /* References */
+    .ref-list { list-style: none; margin: 0; padding: 0; }
+    .ref-list li {
+      padding: .6rem 0; border-bottom: 1px solid var(--border);
+      font-size: .875rem; color: var(--muted);
+    }
+    .ref-list li:last-child { border-bottom: none; }
+    .ref-list li em { color: var(--blue); }
+
+    /* Future work */
+    .future-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap: .75rem; margin: 1rem 0; }
+    .future-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: .5rem; padding: .9rem 1.1rem;
+    }
+    .future-card h4 { font-size: .85rem; font-weight: 600; color: var(--yellow); margin-bottom: .25rem; }
+    .future-card p { font-size: .78rem; color: var(--muted); margin: 0; }
+
+    /* Back button */
+    .back-btn {
+      display: inline-flex; align-items: center; gap: .4rem;
+      color: var(--muted); text-decoration: none; font-size: .875rem;
+      padding: .5rem .9rem; border: 1px solid var(--border);
+      border-radius: .4rem; margin-bottom: 2rem; transition: all .2s;
+    }
+    .back-btn:hover { color: var(--text); border-color: var(--blue); }
+
+    /* Progress bar */
+    .reading-bar {
+      position: fixed; top: 56px; left: 0; height: 2px;
+      background: var(--blue); width: 0%; z-index: 200;
+      transition: width .1s linear;
+    }
+
+    @media (max-width: 768px) {
+      .page-wrap { grid-template-columns: 1fr; }
+      .toc { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Reading progress bar -->
+<div class="reading-bar" id="readBar"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-left">
+    <a href="index.html" class="nav-home">← Home</a>
+    <span class="nav-sep">/</span>
+    <span class="nav-title">Research Report</span>
+  </div>
+  <span class="nav-badge">RWH REJECTED 2/5</span>
+</nav>
+
+<div class="page-wrap">
+
+  <!-- SIDEBAR TABLE OF CONTENTS -->
+  <aside>
+    <div class="toc">
+      <div class="toc-title">Contents</div>
+      <a href="#abstract">Abstract</a>
+      <a href="#s1">1. Introduction</a>
+      <a href="#s2">2. Theory</a>
+      <a href="#s2" class="sub">2.1 Random Walk Model</a>
+      <a href="#s2" class="sub">2.2 EMH</a>
+      <a href="#s2" class="sub">2.3 Log Returns</a>
+      <a href="#s3">3. Data</a>
+      <a href="#s4">4. EDA</a>
+      <a href="#s5">5. Statistical Tests</a>
+      <a href="#s5" class="sub">5.1 ADF Test</a>
+      <a href="#s5" class="sub">5.2 Ljung-Box ACF</a>
+      <a href="#s5" class="sub">5.3 Runs Test</a>
+      <a href="#s5" class="sub">5.4 Variance Ratio</a>
+      <a href="#s6">6. Extensions (GARCH)</a>
+      <a href="#s7">7. Discussion</a>
+      <a href="#s8">8. Conclusion</a>
+      <a href="#s9">9. Future Work</a>
+      <a href="#refs">References</a>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+    <!-- Paper Header -->
+    <div class="paper-header">
+      <h1>Testing the <span>Random Walk Hypothesis</span> on Bitcoin (BTC-USD)</h1>
+      <div class="paper-sub">A Statistical Research Report</div>
+      <div class="meta-grid">
+        <div class="meta-item"><strong>Date:</strong> April 2026</div>
+        <div class="meta-item"><strong>Data:</strong> CoinGecko BTC-USD (2013–2026)</div>
+        <div class="meta-item"><strong>Observations:</strong> 4,735 daily log returns</div>
+        <div class="meta-item"><strong>Tools:</strong> Python · pandas · statsmodels · arch</div>
+      </div>
+    </div>
+
+    <!-- Verdict -->
+    <div class="verdict-card">
+      <div class="verdict-icon">❌</div>
+      <div>
+        <h3>Final Verdict: RWH REJECTED — 2 of 5 tests support the Random Walk Hypothesis</h3>
+        <p>Bitcoin exhibits statistically significant momentum, serial autocorrelation at 6–30 day horizons, long-horizon variance ratio deviations, and highly persistent GARCH volatility — all inconsistent with weak-form market efficiency.</p>
+      </div>
+    </div>
+
+    <!-- ABSTRACT -->
+    <div class="abstract" id="abstract">
+      <strong>Abstract.</strong> This report investigates whether Bitcoin (BTC-USD) price movements follow the Random Walk Hypothesis (RWH), a cornerstone of the Efficient Market Hypothesis (EMH) in its weak form. Using 4,735 daily observations spanning April 2013 to April 2026, we apply four core statistical tests — the Augmented Dickey-Fuller (ADF) test, Ljung-Box autocorrelation test, Wald-Wolfowitz Runs test, and the Variance Ratio test (Lo-MacKinlay, 1988) — together with GARCH(1,1) volatility modelling and rolling window analysis as extensions. The results indicate that <strong>2 out of 5 core tests support the RWH</strong>, leading to a verdict of <strong>REJECTED</strong>. Bitcoin's return series exhibits significant momentum, serial dependence at medium horizons (6–30 days), and sustained volatility clustering — all inconsistent with a pure random walk.
+    </div>
+
+    <!-- 1. INTRODUCTION -->
+    <div class="section" id="s1">
+      <h2><span class="num">1</span> Introduction</h2>
+      <p>The Random Walk Hypothesis posits that successive asset price changes are independent and identically distributed, rendering future prices impossible to predict from historical data alone. First formalised by Bachelier (1900) and popularised by Fama (1970) as the weak form of the Efficient Market Hypothesis, the RWH has profound implications:</p>
+      <ul>
+        <li><strong>For investors:</strong> If RWH holds, systematic excess returns through technical analysis are impossible.</li>
+        <li><strong>For quantitative traders:</strong> Rejection of the RWH identifies windows of exploitable inefficiency.</li>
+        <li><strong>For regulators and economists:</strong> Market efficiency informs policy on transparency, liquidity, and price discovery.</li>
+      </ul>
+      <p>Bitcoin, as a relatively young, decentralised, and retail-driven asset, presents an ideal candidate for testing market efficiency. Unlike mature equity markets, cryptocurrency markets lack continuous institutional arbitrage, operate 24/7, and were historically subject to speculative bubbles — all conditions that may precipitate inefficiency.</p>
+    </div>
+
+    <!-- 2. THEORY -->
+    <div class="section" id="s2">
+      <h2><span class="num">2</span> Theoretical Background</h2>
+
+      <h3>2.1 The Random Walk Model</h3>
+      <p>Let $P_t$ denote the asset price at time $t$. A random walk without drift is defined as:</p>
+      <div class="math-block">$$P_t = P_{t-1} + \varepsilon_t, \quad \varepsilon_t \sim \text{IID}(0, \sigma^2)$$</div>
+      <p>Taking the natural logarithm, the log return $r_t$ is:</p>
+      <div class="math-block">$$r_t = \ln\left(\frac{P_t}{P_{t-1}}\right) = \ln P_t - \ln P_{t-1}$$</div>
+      <p><strong>For the RWH to hold, $r_t$ must satisfy:</strong></p>
+      <ol>
+        <li><strong>Independence:</strong> $\text{Cov}(r_t, r_{t-k}) = 0$ for all $k \neq 0$</li>
+        <li><strong>Stationarity:</strong> $E[r_t] = \mu$ and $\text{Var}(r_t) = \sigma^2$ are constant</li>
+        <li><strong>Variance linearity:</strong> $\text{Var}(r_{t,k}) = k \cdot \sigma^2$ (the Lo-MacKinlay condition)</li>
+      </ol>
+
+      <h3>2.2 Efficient Market Hypothesis (Weak Form)</h3>
+      <p>The weak-form EMH (Fama, 1970) states that all past price and volume information is fully reflected in current prices. This is equivalent to requiring the price process to follow a martingale:</p>
+      <div class="math-block">$$E[P_{t+1} \mid P_t, P_{t-1}, \ldots] = P_t$$</div>
+
+      <h3>2.3 Why Log Returns?</h3>
+      <p>Log returns are preferred over simple arithmetic returns for two key reasons:</p>
+      <ul>
+        <li><strong>Time additivity:</strong> $r_{0 \to T} = \sum_{t=1}^{T} r_t$ (simple returns are multiplicative)</li>
+        <li><strong>Normalisation:</strong> Log returns suppress the exponential scale effect of long price series, making distributional assumptions more tractable</li>
+      </ul>
+    </div>
+
+    <!-- 3. DATA -->
+    <div class="section" id="s3">
+      <h2><span class="num">3</span> Data</h2>
+      <h3>3.1 Source and Structure</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Property</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td>Asset</td><td>Bitcoin (BTC-USD)</td></tr>
+            <tr><td>Source</td><td>CoinGecko — <span class="mono">btc-usd-max.csv</span></td></tr>
+            <tr><td>Frequency</td><td>Daily</td></tr>
+            <tr><td>Date Range</td><td>2013-04-28 → 2026-04-17</td></tr>
+            <tr><td>Total Rows</td><td>4,736</td></tr>
+            <tr><td>Return Observations</td><td>4,735</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>3.2 Descriptive Statistics</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Statistic</th><th>Value</th><th>Interpretation</th></tr></thead>
+          <tbody>
+            <tr><td>Mean</td><td class="mono">+0.001335</td><td>≈ +0.13%/day average return</td></tr>
+            <tr><td>Std Dev</td><td class="mono">0.037455</td><td>≈ 3.75%/day daily volatility</td></tr>
+            <tr><td>Min</td><td class="mono">-0.4337</td><td>Single-day crash of −43.4%</td></tr>
+            <tr><td>Max</td><td class="mono">+0.2871</td><td>Single-day rally of +28.7%</td></tr>
+            <tr><td>Skewness</td><td class="mono">-0.4934</td><td>Left-skewed: crashes sharper than rallies</td></tr>
+            <tr><td><strong>Kurtosis</strong></td><td class="mono" style="color:var(--red)"><strong>9.3778</strong></td><td><strong>9× fatter tails than Normal</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The excess kurtosis of <strong>9.38</strong> is strongly leptokurtic — Bitcoin's tails are nearly 9× fatter than a normal distribution. This alone indicates that any test relying on normality assumptions should be interpreted cautiously.</p>
+    </div>
+
+    <!-- 4. EDA -->
+    <div class="section" id="s4">
+      <h2><span class="num">4</span> Exploratory Data Analysis</h2>
+      <p>The EDA chart below shows the full price history, log returns, return distribution, ACF, and rolling volatility. Key visual observations:</p>
+      <ul>
+        <li><strong>Price series:</strong> Four distinct regimes (early adoption → bubble 2017 → COVID crash → institutional adoption → current)</li>
+        <li><strong>Log returns:</strong> Clear volatility clustering — calm periods interrupted by turbulent bursts (GARCH effect)</li>
+        <li><strong>Distribution:</strong> Highly peaked centre with extreme fat tails — Normal curve (orange) systematically underestimates tail mass</li>
+        <li><strong>ACF:</strong> Individual lags small but clusters appear at medium horizons (6–30 lags)</li>
+      </ul>
+      <img src="btc_eda_plots.png" alt="EDA Charts" style="width:100%;border-radius:.75rem;border:1px solid var(--border);margin-top:.5rem;" loading="lazy" />
+    </div>
+
+    <!-- 5. TESTS -->
+    <div class="section" id="s5">
+      <h2><span class="num">5</span> Statistical Tests</h2>
+
+      <!-- ADF -->
+      <div class="test-card">
+        <div class="test-card-header">
+          <h4>5.1 Augmented Dickey-Fuller Test (ADF)</h4>
+          <span class="badge badge-pass">✔ Supports RWH</span>
+        </div>
+        <div class="h0-box">H₀: The series has a unit root (is non-stationary)</div>
+        <div class="math-block">$$\Delta y_t = \alpha + \beta y_{t-1} + \sum_{i=1}^{p} \gamma_i \Delta y_{t-i} + \varepsilon_t$$</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Series</th><th>ADF Statistic</th><th>p-value</th><th>Decision</th></tr></thead>
+            <tbody>
+              <tr><td>Prices</td><td class="mono">-1.0225</td><td class="mono">0.7450</td><td><span class="badge badge-pass">Non-stationary ✔</span></td></tr>
+              <tr><td>Log Returns</td><td class="mono">-18.4751</td><td class="mono">0.0000</td><td><span class="badge badge-pass">Stationary ✔</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Prices are non-stationary (unit root present) — consistent with a random walk. Returns are strongly stationary — consistent with a weakly stationary noise process. Both results align with the RWH structural framework.</p>
+        <div class="verdict-inline verdict-pass">✔ Verdict: Supports RWH</div>
+      </div>
+
+      <!-- ACF -->
+      <div class="test-card">
+        <div class="test-card-header">
+          <h4>5.2 Ljung-Box Autocorrelation (Q) Test</h4>
+          <span class="badge badge-fail">✘ Against RWH</span>
+        </div>
+        <div class="h0-box">H₀: No autocorrelation up to lag k — returns are white noise</div>
+        <div class="math-block">$$Q(k) = n(n+2)\sum_{j=1}^{k} \frac{\hat{\rho}_j^2}{n-j} \sim \chi^2(k)$$</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Lag</th><th>Q-statistic</th><th>p-value</th><th>Significant?</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">1</td><td class="mono">0.64</td><td class="mono">0.423</td><td><span class="badge badge-pass">No ✔</span></td></tr>
+              <tr><td class="mono">5</td><td class="mono">5.21</td><td class="mono">0.391</td><td><span class="badge badge-pass">No ✔</span></td></tr>
+              <tr><td class="mono">6</td><td class="mono" style="color:var(--red)"><strong>16.03</strong></td><td class="mono" style="color:var(--red)"><strong>0.0136</strong></td><td><span class="badge badge-fail">Yes ✘</span></td></tr>
+              <tr><td class="mono">10</td><td class="mono">29.17</td><td class="mono">0.0012</td><td><span class="badge badge-fail">Yes ✘</span></td></tr>
+              <tr><td class="mono">20</td><td class="mono">47.31</td><td class="mono">0.0005</td><td><span class="badge badge-fail">Yes ✘</span></td></tr>
+              <tr><td class="mono">30</td><td class="mono">58.94</td><td class="mono">0.0024</td><td><span class="badge badge-fail">Yes ✘</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Short-run returns (lags 1–5) appear independent, but significant cumulative autocorrelation emerges from lag 6. <strong>Beyond one trading week, the history of Bitcoin returns carries predictive information</strong> — a direct violation of the weak-form EMH.</p>
+        <div class="verdict-inline verdict-fail">✘ Verdict: Against RWH — Serial dependence at medium horizons</div>
+      </div>
+
+      <!-- RUNS -->
+      <div class="test-card">
+        <div class="test-card-header">
+          <h4>5.3 Wald-Wolfowitz Runs Test</h4>
+          <span class="badge badge-fail">✘ Against RWH</span>
+        </div>
+        <div class="h0-box">H₀: The binary sign sequence (+/−) of returns is purely random</div>
+        <div class="math-block">$$Z = \frac{R - E[R]}{\sqrt{V[R]}} \xrightarrow{d} N(0,1)$$</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>Z-statistic</td><td class="mono" style="color:var(--red)"><strong>3.0376</strong></td></tr>
+              <tr><td>p-value</td><td class="mono" style="color:var(--red)"><strong>0.0024</strong></td></tr>
+              <tr><td>Interpretation</td><td>Fewer runs than expected → <strong>Momentum clustering</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Positive Z = 3.04 means there are <strong>fewer runs than expected under randomness</strong> — same-sign returns cluster together. This is the statistical signature of <strong>momentum</strong>: up-days tend to follow up-days, down-days follow down-days. With p = 0.0024 we reject randomness at all conventional levels.</p>
+        <div class="verdict-inline verdict-fail">✘ Verdict: Against RWH — Non-random momentum clustering</div>
+      </div>
+
+      <!-- VR -->
+      <div class="test-card">
+        <div class="test-card-header">
+          <h4>5.4 Variance Ratio Test (Lo-MacKinlay, 1988)</h4>
+          <span class="badge badge-fail">✘ Against RWH</span>
+        </div>
+        <div class="h0-box">H₀: VR(k) = 1 for all k — variance scales linearly with time</div>
+        <div class="math-block">$$VR(k) = \frac{\text{Var}(r_{t,k})}{k \cdot \text{Var}(r_t)}, \quad z(k) = \frac{VR(k)-1}{\sqrt{2(2k-1)(k-1)/(3kn)}}$$</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>k (days)</th><th>VR(k)</th><th>z-stat</th><th>Reject H₀?</th><th>Interpretation</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">2</td><td class="mono">0.9902</td><td class="mono">-0.677</td><td><span class="badge badge-pass">No ✔</span></td><td style="color:var(--muted)">Near-random</td></tr>
+              <tr><td class="mono">5</td><td class="mono">0.9990</td><td class="mono">-0.030</td><td><span class="badge badge-pass">No ✔</span></td><td style="color:var(--muted)">Near-random</td></tr>
+              <tr><td class="mono">10</td><td class="mono">1.0747</td><td class="mono">1.523</td><td><span class="badge badge-pass">No ✔</span></td><td style="color:var(--muted)">Borderline</td></tr>
+              <tr><td class="mono">20</td><td class="mono" style="color:var(--red)"><strong>1.2273</strong></td><td class="mono" style="color:var(--red)"><strong>3.147</strong></td><td><span class="badge badge-fail">Yes ✘</span></td><td style="color:var(--muted)">Momentum at 1-month</td></tr>
+              <tr><td class="mono">30</td><td class="mono" style="color:var(--red)"><strong>1.3210</strong></td><td class="mono" style="color:var(--red)"><strong>3.582</strong></td><td><span class="badge badge-fail">Yes ✘</span></td><td style="color:var(--muted)">Strong momentum at 6-week</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>VR rises monotonically from 0.99 at k=2 to ~1.44 at k=50. A pure random walk would stay flat at 1.0. This reveals <strong>positive autocorrelation that compounds over longer holding periods</strong> — Bitcoin trends.</p>
+        <img src="btc_variance_ratio.png" alt="Variance Ratio Profile" style="width:100%;border-radius:.75rem;border:1px solid var(--border);margin-top:.75rem;" loading="lazy" />
+        <div class="verdict-inline verdict-fail" style="margin-top:.75rem">✘ Verdict: Against RWH — VR rises to 1.44 at k=50 (significant at k=20,30)</div>
+      </div>
+    </div>
+
+    <!-- 6. GARCH -->
+    <div class="section" id="s6">
+      <h2><span class="num">6</span> Extensions — GARCH(1,1) & Rolling Analysis</h2>
+      <h3>6.1 GARCH(1,1) Volatility Model</h3>
+      <div class="math-block">$$r_t = \mu + \varepsilon_t, \quad \varepsilon_t = \sigma_t z_t, \quad \sigma_t^2 = \omega + \alpha \varepsilon_{t-1}^2 + \beta \sigma_{t-1}^2$$</div>
+      <div class="param-row">
+        <div class="param-cell"><div class="param-name">μ mu</div><div class="param-val">0.1357</div><div style="font-size:.72rem;color:var(--green)">p=0.0013 ★★</div></div>
+        <div class="param-cell"><div class="param-name">ω omega</div><div class="param-val">0.5957</div><div style="font-size:.72rem;color:var(--green)">p=0.0003 ★★★</div></div>
+        <div class="param-cell"><div class="param-name">α alpha[1]</div><div class="param-val">0.1484</div><div style="font-size:.72rem;color:var(--green)">p&lt;0.0001 ★★★</div></div>
+        <div class="param-cell"><div class="param-name">β beta[1]</div><div class="param-val">0.8207</div><div style="font-size:.72rem;color:var(--green)">p&lt;0.0001 ★★★</div></div>
+        <div class="param-cell" style="background:rgba(248,81,73,.05);border-color:rgba(248,81,73,.2)">
+          <div class="param-name">Persistence α+β</div>
+          <div class="param-val" style="color:var(--red)">0.9691</div>
+          <div style="font-size:.72rem;color:var(--orange)">Very high persistence</div>
+        </div>
+        <div class="param-cell"><div class="param-name">Long-run Vol (Ann.)</div><div class="param-val">83.84%</div></div>
+      </div>
+      <p>Persistence (α+β) = 0.969 means volatility shocks are extremely slow to decay. Even after GARCH filtering, <strong>the residuals remain autocorrelated</strong> (significant at all lags 1–20), indicating deeper non-linear structure beyond what GARCH can capture.</p>
+
+      <h3>6.2 Rolling Window Analysis</h3>
+      <p>Rolling ADF (365-day window): <strong>100% of windows</strong> stationary — stationarity is consistent throughout BTC history, not a statistical artefact of the full sample.</p>
+      <p>Rolling Runs Test (180-day window): <strong>14.8% of windows</strong> show non-random behaviour — momentum is episodic, concentrated in major bull/bear market runs, not uniformly present.</p>
+      <img src="btc_garch_plots.png" alt="GARCH and Rolling Analysis" style="width:100%;border-radius:.75rem;border:1px solid var(--border);margin-top:.75rem;" loading="lazy" />
+    </div>
+
+    <!-- 7. DISCUSSION -->
+    <div class="section" id="s7">
+      <h2><span class="num">7</span> Discussion</h2>
+      <h3>7.1 Summary of Evidence</h3>
+      <div class="score-summary">
+        <div class="score-row"><span>ADF — Prices Non-Stationary</span><span class="badge badge-pass">✔ Supports RWH</span></div>
+        <div class="score-row"><span>ADF — Returns Stationary</span><span class="badge badge-pass">✔ Supports RWH</span></div>
+        <div class="score-row"><span>Ljung-Box ACF (Lags 6–30)</span><span class="badge badge-fail">✘ Rejects RWH</span></div>
+        <div class="score-row"><span>Wald-Wolfowitz Runs Test</span><span class="badge badge-fail">✘ Rejects RWH</span></div>
+        <div class="score-row"><span>Variance Ratio Test (k=20,30)</span><span class="badge badge-fail">✘ Rejects RWH</span></div>
+        <div class="score-row final"><span>Final Score</span><span style="color:var(--red)">2/5 — REJECTED ❌</span></div>
+      </div>
+
+      <h3>7.2 BTC vs. Mature Equity Markets (AAPL)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Metric</th><th>BTC-USD</th><th>AAPL</th></tr></thead>
+          <tbody>
+            <tr><td>Tests supporting RWH</td><td class="mono" style="color:var(--red)">2/5</td><td class="mono" style="color:var(--yellow)">3/5</td></tr>
+            <tr><td>Kurtosis</td><td class="mono">9.38</td><td class="mono">5.69</td></tr>
+            <tr><td>Runs Test p-value</td><td class="mono" style="color:var(--red)">0.0024 ✘</td><td class="mono" style="color:var(--green)">0.3537 ✔</td></tr>
+            <tr><td>VR at k=20</td><td class="mono" style="color:var(--red)">1.23 ✘</td><td class="mono">0.85 ✘</td></tr>
+            <tr><td><strong>Verdict</strong></td><td style="color:var(--red)"><strong>Rejected</strong></td><td style="color:var(--yellow)">Partially Supported</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Bitcoin is measurably less efficient than Apple stock — consistent with lower institutional arbitrage capacity and greater retail speculative activity.</p>
+
+      <h3>7.3 Limitations</h3>
+      <ol>
+        <li><strong>Fat tails:</strong> Kurtosis of 9.38 means the asymptotic normal distribution underlying the VR and Runs z-tests is a poor approximation.</li>
+        <li><strong>Structural breaks:</strong> Bitcoin has passed through fundamentally different market regimes. Full-sample tests aggregate across these.</li>
+        <li><strong>Non-linear dependence:</strong> ACF and VR tests only detect linear autocorrelation. Machine learning may uncover deeper structure.</li>
+        <li><strong>Transaction costs:</strong> Statistical predictability does not imply economic profitability after costs and slippage.</li>
+      </ol>
+    </div>
+
+    <!-- 8. CONCLUSION -->
+    <div class="section" id="s8">
+      <h2><span class="num">8</span> Conclusion</h2>
+      <p>Based on four statistical tests applied to 4,735 daily Bitcoin return observations (2013–2026), the Random Walk Hypothesis is <strong style="color:var(--red)">rejected</strong> at conventional significance levels.</p>
+      <ul>
+        <li><strong>ADF:</strong> Price levels exhibit unit roots and returns are stationary — structurally consistent with a random walk model ✔</li>
+        <li><strong>Runs Test (p=0.0024):</strong> Strong evidence that return sign sequences are non-random — momentum clustering ✘</li>
+        <li><strong>Ljung-Box:</strong> Statistically significant autocorrelation from lag 6 through lag 30 ✘</li>
+        <li><strong>Variance Ratio:</strong> VR rises from 0.99 (k=2) to 1.44 (k=50) — significant positive autocorrelation at longer horizons ✘</li>
+        <li><strong>GARCH(1,1):</strong> Persistence α+β=0.969 confirms highly clustered volatility — constant-variance RWH assumption strongly violated ✘</li>
+      </ul>
+      <p>Bitcoin's market is <strong>not weak-form efficient</strong> over the 2013–2026 window. Exploitable statistical structure exists primarily at the <strong>1–4 week holding period</strong> horizon, where momentum-based strategies might generate meaningful signals before accounting for transaction costs.</p>
+    </div>
+
+    <!-- 9. FUTURE WORK -->
+    <div class="section" id="s9">
+      <h2><span class="num">9</span> Future Work</h2>
+      <div class="future-grid">
+        <div class="future-card"><h4>EGARCH / GJR-GARCH</h4><p>Capture asymmetric volatility (leverage effect) — negative shocks may amplify volatility more than positive shocks.</p></div>
+        <div class="future-card"><h4>Bootstrap VR Test</h4><p>Heteroskedasticity-robust variance ratio inference — addresses the fat-tail limitation of asymptotic z-tests.</p></div>
+        <div class="future-card"><h4>Hurst Exponent</h4><p>Measure long-range dependence (H &gt; 0.5 → trending). Provides a continuous measure of persistence rather than a binary test.</p></div>
+        <div class="future-card"><h4>Machine Learning</h4><p>LSTM/Transformer to detect non-linear return predictability beyond what linear autocorrelation tests can capture.</p></div>
+        <div class="future-card"><h4>High-Frequency Data</h4><p>Tick-level analysis would likely reveal even stronger RWH violations due to market microstructure effects.</p></div>
+        <div class="future-card"><h4>Regime-Switching Model</h4><p>Markov-switching to test market efficiency separately within bull and bear regimes.</p></div>
+      </div>
+    </div>
+
+    <!-- REFERENCES -->
+    <div class="section" id="refs">
+      <h2><span class="num">Ref</span> References</h2>
+      <ul class="ref-list">
+        <li>Bachelier, L. (1900). <em>Théorie de la spéculation.</em> Annales Scientifiques de l'École Normale Supérieure.</li>
+        <li>Fama, E. F. (1970). Efficient capital markets: A review of theory and empirical work. <em>Journal of Finance</em>, 25(2), 383–417.</li>
+        <li>Lo, A. W., & MacKinlay, A. C. (1988). Stock market prices do not follow random walks. <em>Review of Financial Studies</em>, 1(1), 41–66.</li>
+        <li>Engle, R. F. (1982). Autoregressive conditional heteroscedasticity. <em>Econometrica</em>, 50(4), 987–1007.</li>
+        <li>Bollerslev, T. (1986). Generalized autoregressive conditional heteroscedasticity. <em>Journal of Econometrics</em>, 31(3), 307–327.</li>
+        <li>Urquhart, A. (2016). The inefficiency of Bitcoin. <em>Economics Letters</em>, 148, 80–82.</li>
+      </ul>
+    </div>
+
+  </main>
+</div>
+
+<footer style="border-top:1px solid var(--border);padding:1.5rem 2rem;text-align:center;color:var(--muted);font-size:.82rem;">
+  <p>BTC-USD · 4,735 daily observations · 2013–2026 &nbsp;|&nbsp;
+  <a href="index.html" style="color:var(--blue);text-decoration:none">← Back to Home</a> &nbsp;|&nbsp;
+  <a href="https://github.com/YTxFSGAMERz/Random-Walk-Hypothesis" target="_blank" style="color:var(--blue);text-decoration:none">GitHub Repository</a></p>
+</footer>
+
+<script>
+  // Reading progress bar
+  window.addEventListener('scroll', () => {
+    const doc = document.documentElement;
+    const pct = (doc.scrollTop / (doc.scrollHeight - doc.clientHeight)) * 100;
+    document.getElementById('readBar').style.width = pct + '%';
+  });
+</script>
+</body>
+</html>
